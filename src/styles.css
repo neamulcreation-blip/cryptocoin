@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Crypto Coin — Your market. In focus.</title>
+  <meta name="description" content="A clearer view of crypto. Follow the markets, build your watchlist, and practice spot trading with a secure personal Crypto Coin account.">
+  <meta property="og:site_name" content="Crypto Coin">
+  <meta property="og:title" content="Crypto Coin — Your market. In focus.">
+  <meta property="og:description" content="Follow crypto markets, save your watchlist, and practice spot trading in your secure personal dashboard.">
+  <meta name="theme-color" content="#f7f8fa">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23ee7047'/%3E%3Cpath d='M26 12a11 11 0 1 0 0 16M17 13v14M22 11v18' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Main navigation">
+    <a class="brand" href="/" aria-label="Crypto Coin home"><span class="brand-mark">₿</span> Crypto<span>Coin</span><span class="brand-dot"></span></a>
+    <div class="workspace"><span class="workspace-icon" data-icon="layers"></span><span>Personal workspace<small>Make your next move</small></span><span data-icon="chevron-down"></span></div>
+    <p class="nav-caption">WORKSPACE</p>
+    <nav class="navigation">
+      <button class="nav-link active" data-page="overview"><span data-icon="grid"></span><span>Overview</span></button>
+      <button class="nav-link" data-page="markets"><span data-icon="activity"></span><span>Markets</span><span class="nav-tag">8</span></button>
+      <button class="nav-link" data-page="trade"><span data-icon="swap"></span><span>Trade</span></button>
+      <button class="nav-link" data-page="wallet"><span data-icon="wallet"></span><span>My wallet</span></button>
+      <button class="nav-link" data-page="history"><span data-icon="clock"></span><span>Order history</span></button>
+    </nav>
+    <p class="nav-caption watch-caption">YOUR COLLECTION</p>
+    <button class="nav-link" data-page="watchlist"><span data-icon="star"></span><span>Watchlist</span><span class="watch-count nav-tag">3</span></button>
+    <div class="sidebar-bottom">
+      <div class="practice-note"><span class="practice-orbit" data-icon="compass"></span><strong>Big ideas. Zero risk.</strong><p>Find your trading rhythm with a practice portfolio.</p><button data-action="practice">Explore practice trading <span>↗</span></button></div>
+      <button class="nav-link" data-page="settings"><span data-icon="settings"></span><span>Account settings</span></button>
+      <div class="sidebar-user"><span class="avatar user-initial">G</span><span class="user-copy"><strong class="user-name">Guest explorer</strong><small class="user-status">Your crypto journey starts here</small></span><button class="icon-button" data-action="account" aria-label="Open account"><span data-icon="chevron-right"></span></button></div>
+    </div>
+  </aside>
+  <div class="content-shell">
+    <header class="topbar">
+      <div class="breadcrumb"><span data-icon="home"></span><span>/</span><strong id="breadcrumb">Overview</strong></div>
+      <div class="top-actions"><div class="market-status"><span class="status-dot"></span><span id="market-status">Connecting to markets</span></div><span class="top-divider"></span><button class="icon-button" data-action="notifications" aria-label="Market and account status"><span data-icon="bell"></span><span class="notification-dot"></span></button><button class="account-button" data-action="account"><span class="avatar small user-initial">G</span><span class="account-label">Sign in</span><span data-icon="chevron-down"></span></button></div>
+    </header>
+    <main id="main" tabindex="-1">
+      <section class="page-heading"><div><div class="eyebrow"><span class="tiny-line"></span> A LITTLE CLARITY. A BETTER PERSPECTIVE.</div><h1 id="page-title">Your market. In focus<span>.</span></h1><p id="page-description">A fresh perspective on your portfolio and the crypto markets.</p></div><div class="heading-end"><span id="today"></span><button class="secondary-button" id="refresh-button"><span data-icon="refresh"></span> Refresh markets</button></div></section>
+      <div id="account-error" class="inline-banner hidden" role="alert"></div>
+      <div id="page-content"><noscript><section class="panel empty-state"><h2>A clearer view of crypto.</h2><p>Enable JavaScript to explore the markets, sign in, and use your personal practice portfolio.</p></section></noscript></div>
+      <footer class="page-footer"><span><span class="brand-mini">₿</span> A clearer way to crypto.</span><span>Practice funds only · No real-money trading</span><span>Crypto Coin © <span id="year"></span></span></footer>
+    </main>
+  </div>
+</div>
+<nav class="mobile-nav" aria-label="Mobile navigation"><button data-page="overview" class="active"><span data-icon="grid"></span>Overview</button><button data-page="markets"><span data-icon="activity"></span>Markets</button><button data-page="trade"><span data-icon="swap"></span>Trade</button><button data-page="wallet"><span data-icon="wallet"></span>Wallet</button><button data-action="account"><span data-icon="user"></span>Account</button></nav>
+<dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-title"><button class="dialog-close icon-button" data-close="auth-dialog" aria-label="Close account dialog"><span data-icon="x"></span></button><div class="auth-brand"><span class="brand-mark">₿</span><span>Crypto Coin</span></div><div class="auth-eyebrow">YOUR NEXT CHAPTER STARTS HERE</div><h2 id="auth-title">Welcome back.</h2><p id="auth-description">A clearer view of crypto is one sign-in away.</p><div class="auth-tabs" id="auth-tabs"><button class="active" data-auth="login">Sign in</button><button data-auth="signup">Create account</button></div><form id="auth-form"><label id="name-label" class="hidden">Your name<input id="auth-name" name="name" autocomplete="name" maxlength="60" placeholder="How should we call you?"></label><label id="email-label">Email address<input id="auth-email" name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label><label id="password-label">Password<span class="password-field"><input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" placeholder="Enter your password"><button type="button" id="show-password" aria-label="Show password"><span data-icon="eye"></span></button></span></label><button type="button" class="text-button forgot-button" id="forgot-password">Forgot password?</button><p id="auth-message" class="form-message" role="status"></p><button class="primary-button auth-submit" id="auth-submit" type="submit">Sign in <span>↗</span></button></form><div class="auth-security"><span data-icon="shield"></span> Secure accounts. Private portfolios.</div><p class="auth-disclaimer">Practice trading uses virtual funds. Deposits and withdrawals are not available.</p></dialog>
+<dialog id="info-dialog" class="info-dialog" aria-labelledby="info-title"><button class="dialog-close icon-button" data-close="info-dialog" aria-label="Close information"><span data-icon="x"></span></button><span class="info-symbol" data-icon="info"></span><h2 id="info-title"></h2><p id="info-text"></p><button class="primary-button" data-close="info-dialog">Got it</button></dialog>
+<div class="toast hidden" id="toast" role="status"><span data-icon="check"></span><span id="toast-text"></span></div>
+</body>
+</html>

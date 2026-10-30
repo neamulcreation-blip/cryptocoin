@@ -1,0 +1,20 @@
+[build]
+  command = "npm run build"
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"
+
+[[edge_functions]]
+  function = "" 
+
+[build.environment]
+  NODE_VERSION = "22.12.0"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://api.coingecko.com https://api.coinbase.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"

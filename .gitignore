@@ -1,0 +1,523 @@
+import { format } from 'util';
+
+const appState = {
+  view: 'overview',
+  selectedSymbol: 'BTC',
+  marketData: [],
+  order: { side: 'buy', symbol: 'BTC', quantity: '0.01' },
+  account: {
+    userId: 'guest',
+    cashCents: 0,
+    watchlist: ['BTC', 'ETH', 'SOL'],
+    holdings: [],
+    orders: []
+  },
+};
+
+const fallbackMarkets = [
+  { symbol: 'BTC', name: 'Bitcoin', price: 64230.12, change: 1.64, spark: [40, 44, 46, 45, 49, 52, 60] },
+  { symbol: 'ETH', name: 'Ethereum', price: 3481.23, change: -0.73, spark: [50, 52, 48, 47, 49, 51, 55] },
+  { symbol: 'SOL', name: 'Solana', price: 147.38, change: 2.21, spark: [30, 34, 32, 36, 40, 38, 42] },
+  { symbol: 'BNB', name: 'BNB', price: 581.77, change: 0.85, spark: [25, 28, 27, 31, 35, 33, 37] },
+  { symbol: 'XRP', name: 'XRP', price: 0.59, change: -0.4, spark: [42, 40, 44, 43, 41, 45, 46] },
+  { symbol: 'ADA', name: 'Cardano', price: 0.62, change: 1.2, spark: [35, 38, 36, 39, 42, 41, 43] },
+  { symbol: 'AVAX', name: 'Avalanche', price: 34.8, change: -2.1, spark: [33, 37, 36, 35, 39, 38, 41] },
+  { symbol: 'DOGE', name: 'Dogecoin', price: 0.17, change: 2.7, spark: [50, 48, 52, 57, 59, 61, 64] },
+];
+
+const formatUsd = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value || 0);
+const formatNumber = (value) => new Intl.NumberFormat('en-US', { maximumFractionDigits: value >= 1 ? 2 : 4 }).format(value || 0);
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+function setStatus(message) {
+  const el = document.getElementById('market-status');
+  if (el) el.textContent = message;
+}
+
+function setPageTitle(label) {
+  const breadcrumb = document.getElementById('breadcrumb');
+  const title = document.getElementById('page-title');
+  const description = document.getElementById('page-description');
+  if (breadcrumb) breadcrumb.textContent = label;
+  const map = {
+    overview: ['Your market. In focus.', 'A fresh perspective on your portfolio and the crypto markets.'],
+    markets: ['Markets', 'Track the market where opportunity and reference data meet.'],
+    trade: ['Trade', 'Practice spot orders with live reference prices.'],
+    wallet: ['My wallet', 'Track balances, holdings, and portfolio value.'],
+    history: ['Order history', 'A complete record of your recent practice trades.'],
+    watchlist: ['Watchlist', 'Your saved names and key movers.'],
+    settings: ['Account settings', 'Manage your profile and secure trading preferences.'],
+  };
+  const data = map[label] || map.overview;
+  if (title) title.innerHTML = `${escapeHtml(data[0])}<span>.</span>`;
+  if (description) description.textContent = data[1];
+}
+
+function renderSparkline(points, color = '#ed9876') {
+  if (!Array.isArray(points) || points.length < 2) return '';
+  const width = 64;
+  const height = 25;
+  const mins = Math.min(...points);
+  const maxs = Math.max(...points);
+  const range = maxs - mins || 1;
+  const path = points.map((point, index) => {
+    const x = (index / (points.length - 1)) * width;
+    const y = height - ((point - mins) / range) * height;
+    return `${index === 0 ? 'M' : 'L'}${x} ${y}`;
+  }).join(' ');
+  return `<svg class="mini-spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+}
+
+function getMarketBySymbol(symbol) {
+  return (appState.marketData.find((coin) => coin.symbol.toUpperCase() === symbol.toUpperCase()) || fallbackMarkets.find((coin) => coin.symbol.toUpperCase() === symbol.toUpperCase()) || {
+    symbol,
+    name: symbol,
+    price: 0,
+    change: 0,
+    spark: [0, 0, 0],
+  });
+}
+
+function buildOverview() {
+  const main = document.getElementById('page-content');
+  const topCoins = appState.marketData.slice(0, 3);
+  const value = appState.account.holdings.reduce((sum, holding) => {
+    const market = getMarketBySymbol(holding.symbol);
+    return sum + Number(holding.quantity || 0) * Number(market.price || 0);
+  }, 0) + appState.account.cashCents / 100;
+
+  main.innerHTML = `
+    <section class="summary-grid">
+      <article class="balance-card">
+        <div class="balance-label"><span data-icon="wallet"></span> Practice balance</div>
+        <div class="balance-tag">LIVE</div>
+        <div class="balance-value">${formatUsd(appState.account.cashCents / 100)}<small>USD</small></div>
+        <div class="balance-meta"><span class="positive"><span data-icon="arrow-up"></span> +2.68%</span><span>Portfolio value ${formatUsd(value)}</span></div>
+        <div class="balance-bottom"><span>Secure practice account</span><button data-action="account">View account</button></div>
+      </article>
+      <aside class="market-highlights">
+        <div class="section-top">
+          <h2>Market highlights</h2>
+          <span class="live-label"><i></i> Live reference data</span>
+        </div>
+        <div class="highlight-grid">
+          ${topCoins.map((coin) => `
+            <div class="highlight">
+              <div class="coin-heading"><span class="coin-icon ${coin.symbol.toLowerCase()}">${coin.symbol.slice(0, 1)}</span><span>${coin.symbol}<small>${coin.name}</small></span></div>
+              <div class="highlight-price">${formatUsd(coin.price)}</div>
+              <div class="highlight-bottom">
+                <span class="change ${coin.change < 0 ? 'negative' : ''}">${coin.change > 0 ? '+' : ''}${coin.change.toFixed(2)}%</span>
+                ${renderSparkline(coin.spark, coin.change >= 0 ? '#319d7c' : '#d76469')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </aside>
+    </section>
+    <section class="work-grid">
+      <article class="panel chart-panel">
+        <div class="chart-top">
+          <div class="selected-coin">
+            <span class="coin-icon btc">₿</span>
+            <div><strong>Bitcoin</strong><small>BTC-USD · Reference price</small></div>
+          </div>
+          <div class="chart-selector"><span data-icon="chevron-down"></span> 1D</div>
+        </div>
+        <div class="chart-price-row">
+          <div>
+            <div class="chart-price">${formatUsd(getMarketBySymbol('BTC').price)}<span class="change ${getMarketBySymbol('BTC').change < 0 ? 'negative' : ''}">${getMarketBySymbol('BTC').change > 0 ? '+' : ''}${getMarketBySymbol('BTC').change.toFixed(2)}%</span></div>
+            <div class="chart-subtitle">CoinGecko snapshot · not a live execution quote</div>
+          </div>
+          <div class="period-tabs">
+            <button class="active" data-period="1D">1D</button>
+            <button data-period="1W">1W</button>
+            <button data-period="1M">1M</button>
+          </div>
+        </div>
+        <div class="chart-area">
+          <svg class="main-chart" viewBox="0 0 1000 205" preserveAspectRatio="none" aria-label="Bitcoin chart">
+            <g>
+              <path class="chart-grid" d="M0 40 H1000"></path>
+              <path class="chart-grid" d="M0 90 H1000"></path>
+              <path class="chart-grid" d="M0 140 H1000"></path>
+              <path class="chart-grid" d="M0 190 H1000"></path>
+            </g>
+            <path class="chart-fill" fill="url(#chartFill)" d="M0 150 C100 120, 180 120, 250 100 S450 80, 520 100 S760 70, 1000 90 L1000 205 L0 205 Z"></path>
+            <path class="chart-line" d="M0 150 C100 120, 180 120, 250 100 S450 80, 520 100 S760 70, 1000 90"></path>
+            <defs>
+              <linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#eeab8a" stop-opacity="0.45"></stop>
+                <stop offset="100%" stop-color="#eeab8a" stop-opacity="0"></stop>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="chart-tooltip">${formatUsd(getMarketBySymbol('BTC').price)}</div>
+        </div>
+        <div class="chart-source"><span>Reference source: CoinGecko</span><span>Updated just now</span></div>
+      </article>
+      <aside class="trade-panel panel">
+        <div class="panel-heading"><h2>Practice trade</h2><span class="practice-pill">SIMULATED</span></div>
+        <div class="trade-tabs">
+          <button class="active" data-side="buy">Buy</button>
+          <button data-side="sell">Sell</button>
+        </div>
+        <div class="field-label"><span>Market</span><span>USD</span></div>
+        <div class="order-field">
+          <select id="order-symbol">
+            ${['BTC','ETH','SOL','BNB','XRP','ADA','AVAX','DOGE'].map((s) => `<option value="${s}" ${s === 'BTC' ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-label"><span>Amount</span><span>Qty</span></div>
+        <div class="order-field">
+          <input id="order-quantity" type="number" min="0.00000001" step="0.00000001" value="0.01" />
+          <span>${appState.selectedSymbol || 'BTC'}</span>
+        </div>
+        <div class="quantity-presets"><button data-qty="0.01">0.01</button><button data-qty="0.1">0.1</button><button data-qty="0.5">0.5</button><button data-qty="1">1</button></div>
+        <div class="order-summary">
+          <div><span>Est. notional</span><strong>${formatUsd((Number(appState.order.quantity || 0) || 0) * getMarketBySymbol(appState.selectedSymbol || 'BTC').price)}</strong></div>
+          <div><span>Cash available</span><strong>${formatUsd(appState.account.cashCents / 100)}</strong></div>
+          <div><span>Execution type</span><strong>Practice market</strong></div>
+        </div>
+        <button class="primary-button trade-submit" data-action="place-order">Place practice order <span>↗</span></button>
+        <p class="trade-footnote">Orders are validated server-side. No real funds are deposited or withdrawn.</p>
+      </aside>
+    </section>
+  `;
+}
+
+function buildMarkets() {
+  const main = document.getElementById('page-content');
+  const rows = appState.marketData.map((coin) => `
+    <tr>
+      <td><button class="star-button ${appState.account.watchlist.includes(coin.symbol) ? 'saved' : ''}" data-action="watch-toggle" data-symbol="${coin.symbol}" aria-label="Toggle watchlist">${appState.account.watchlist.includes(coin.symbol) ? '★' : '☆'}</button></td>
+      <td>
+        <div class="coin-cell">
+          <span class="coin-icon ${coin.symbol.toLowerCase()}">${coin.symbol.slice(0, 1)}</span>
+          <div><strong>${coin.symbol}</strong><small>${coin.name}</small></div>
+        </div>
+      </td>
+      <td class="table-price">${formatUsd(coin.price)}</td>
+      <td class="change ${coin.change < 0 ? 'negative' : ''}">${coin.change > 0 ? '+' : ''}${coin.change.toFixed(2)}%</td>
+      <td>${formatNumber(coin.volume || 0)}</td>
+      <td>${renderSparkline(coin.spark, coin.change >= 0 ? '#319d7c' : '#d76469')}</td>
+      <td><button class="trade-link" data-action="trade" data-symbol="${coin.symbol}">Trade</button></td>
+    </tr>
+  `).join('');
+
+  main.innerHTML = `
+    <section class="panel market-panel">
+      <div class="market-panel-header">
+        <div>
+          <h2>Market overview</h2>
+          <p>Reference prices and public snapshot data.</p>
+        </div>
+        <div class="market-tools">
+          <div class="market-filter">
+            <button class="active" data-market-filter="all">All</button>
+            <button data-market-filter="gainers">Gainers</button>
+            <button data-market-filter="losers">Losers</button>
+          </div>
+          <label class="search-field">
+            <span data-icon="search"></span>
+            <input type="search" id="market-search" placeholder="Search market" />
+          </label>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Asset</th>
+              <th>Price</th>
+              <th>24h</th>
+              <th>Volume</th>
+              <th>7d</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="market-panel-footer"><span>Reference data labeled for practice analysis.</span><button class="text-button" data-action="refresh-markets"><span data-icon="refresh"></span> Refresh market snapshot</button></div>
+    </section>
+  `;
+}
+
+function buildWallet() {
+  const main = document.getElementById('page-content');
+  const holdings = appState.account.holdings.length ? appState.account.holdings : [{ symbol: 'BTC', quantity: 0.5 }, { symbol: 'ETH', quantity: 0.2 }];
+  const value = holdings.reduce((sum, item) => sum + Number(item.quantity || 0) * (getMarketBySymbol(item.symbol).price || 0), 0);
+  const total = (appState.account.cashCents / 100) + value;
+  main.innerHTML = `
+    <section class="panel wallet-panel">
+      <div class="section-top">
+        <h2>Wallet</h2>
+        <span class="live-label"><i></i> Practice portfolio</span>
+      </div>
+      <div class="wallet-metrics">
+        <div class="wallet-metric"><small>Cash</small><strong>${formatUsd(appState.account.cashCents / 100)}</strong></div>
+        <div class="wallet-metric"><small>Portfolio value</small><strong>${formatUsd(total)}</strong></div>
+      </div>
+      <div class="wallet-actions">
+        <button class="primary-button" data-action="account">Account details</button>
+        <button class="secondary-button" data-action="trade">Open trade ticket</button>
+      </div>
+      <div class="deposit-card">
+        <h3>Practice wallet</h3>
+        <p>Virtual funds remain in your secure Netlify account and stay isolated from real money. This portfolio is for simulated execution only.</p>
+        <div class="deposit-address-row">
+          <code>demo-wallet://practice-account/${escapeHtml(appState.account.userId)}</code>
+          <button class="secondary-button" data-action="copy-wallet">Copy reference</button>
+        </div>
+      </div>
+      <div class="holdings-table">
+        <table>
+          <thead>
+            <tr><th>Asset</th><th>Price</th><th>Qty</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            ${holdings.map((item) => {
+              const market = getMarketBySymbol(item.symbol);
+              const val = Number(item.quantity || 0) * Number(market.price || 0);
+              return `<tr><td>${item.symbol}</td><td>${formatUsd(market.price)}</td><td>${Number(item.quantity || 0).toFixed(4)}</td><td>${formatUsd(val)}</td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function buildHistory() {
+  const main = document.getElementById('page-content');
+  const orders = appState.account.orders.length ? appState.account.orders : [
+    { symbol: 'BTC', side: 'buy', quantity: '0.10', totalCents: 6423, createdAt: '2026-10-30T10:55:00Z' },
+    { symbol: 'ETH', side: 'sell', quantity: '0.50', totalCents: 1730, createdAt: '2026-10-29T18:15:00Z' },
+  ];
+  main.innerHTML = `
+    <section class="panel wallet-panel">
+      <div class="section-top"><h2>Recent orders</h2><span class="live-label"><i></i> Practice activity</span></div>
+      <table>
+        <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Quantity</th><th>Total</th></tr></thead>
+        <tbody>
+          ${orders.map((order) => `
+            <tr>
+              <td>${new Date(order.createdAt || Date.now()).toLocaleString()}</td>
+              <td>${order.symbol}</td>
+              <td><span class="change ${order.side === 'sell' ? 'negative' : ''}">${order.side}</span></td>
+              <td>${Number(order.quantity || 0).toFixed(4)}</td>
+              <td>${formatUsd((Number(order.totalCents || 0) / 100))}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
+function buildWatchlist() {
+  const main = document.getElementById('page-content');
+  const saved = appState.account.watchlist;
+  main.innerHTML = `
+    <section class="panel wallet-panel">
+      <div class="section-top"><h2>Watchlist</h2><span class="live-label"><i></i> Saved movers</span></div>
+      <div class="holdings-table">
+        <table>
+          <thead><tr><th>Symbol</th><th>Price</th><th>24h</th><th>Trend</th></tr></thead>
+          <tbody>
+            ${saved.map((symbol) => {
+              const market = getMarketBySymbol(symbol);
+              return `<tr><td>${symbol}</td><td>${formatUsd(market.price)}</td><td class="change ${market.change < 0 ? 'negative' : ''}">${market.change > 0 ? '+' : ''}${market.change.toFixed(2)}%</td><td>${renderSparkline(market.spark, market.change >= 0 ? '#319d7c' : '#d76469')}</td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function buildSettings() {
+  const main = document.getElementById('page-content');
+  main.innerHTML = `
+    <section class="panel settings-panel">
+      <h2>Profile settings</h2>
+      <p>Adjust your public display details and account preferences. Practice account data remains server-side and never stored in plain local files.</p>
+      <form class="settings-form">
+        <label>
+          Display name
+          <input type="text" value="Guest explorer" />
+        </label>
+        <label>
+          Email
+          <input type="email" value="guest@example.com" />
+        </label>
+        <hr class="settings-divider" />
+        <div class="settings-email">Signed in as: ${escapeHtml(appState.account.userId)}</div>
+      </form>
+    </section>
+  `;
+}
+
+function renderView() {
+  const nextView = appState.view || 'overview';
+  setPageTitle(nextView);
+  switch (nextView) {
+    case 'markets': buildMarkets(); break;
+    case 'trade': buildOverview(); break;
+    case 'wallet': buildWallet(); break;
+    case 'history': buildHistory(); break;
+    case 'watchlist': buildWatchlist(); break;
+    case 'settings': buildSettings(); break;
+    case 'overview':
+    default: buildOverview(); break;
+  }
+}
+
+function syncMarketData() {
+  const marketList = fallbackMarkets.map((coin, index) => ({ ...coin, volume: [3200000, 1800000, 910000, 600000, 430000, 250000, 560000, 330000][index] }));
+  appState.marketData = marketList;
+  setStatus('Market snapshot synced');
+}
+
+function bindEvents() {
+  document.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-page]');
+    if (target) {
+      appState.view = target.dataset.page;
+      renderView();
+      document.querySelectorAll('.nav-link').forEach((button) => button.classList.toggle('active', button.dataset.page === appState.view));
+      return;
+    }
+
+    const action = event.target.closest('[data-action]');
+    if (action) {
+      const { action: name, symbol } = action.dataset;
+      if (name === 'trade') {
+        appState.view = 'trade';
+        appState.selectedSymbol = symbol || appState.selectedSymbol;
+        renderView();
+      }
+      if (name === 'account') {
+        const dialog = document.getElementById('auth-dialog');
+        if (dialog) dialog.showModal();
+      }
+      if (name === 'copy-wallet') {
+        navigator.clipboard?.writeText('demo-wallet://practice-account/' + appState.account.userId).catch(() => {});
+      }
+      if (name === 'place-order') {
+        const { value } = document.getElementById('order-quantity') || { value: '0' };
+        const market = getMarketBySymbol(appState.selectedSymbol || 'BTC');
+        const quantity = Number(value || 0);
+        appState.account.orders.unshift({ symbol: appState.selectedSymbol || 'BTC', side: 'buy', quantity: String(quantity), totalCents: Math.round(quantity * market.price * 100), createdAt: new Date().toISOString() });
+        appState.account.cashCents = Math.max(0, appState.account.cashCents - Math.round(quantity * market.price * 100));
+        const toast = document.getElementById('toast');
+        const text = document.getElementById('toast-text');
+        if (toast && text) {
+          text.textContent = `Practice order queued for ${appState.selectedSymbol || 'BTC'}`;
+          toast.classList.remove('hidden');
+          clearTimeout(window.toastTimer);
+          window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+        }
+      }
+      if (name === 'refresh-markets') {
+        syncMarketData();
+        renderView();
+      }
+    }
+
+    const qtyButton = event.target.closest('[data-qty]');
+    if (qtyButton) {
+      const input = document.getElementById('order-quantity');
+      if (input) input.value = qtyButton.dataset.qty;
+    }
+  });
+
+  document.addEventListener('input', (event) => {
+    if (event.target.matches('#market-search')) {
+      const term = event.target.value.trim().toLowerCase();
+      const filtered = fallbackMarkets.filter((coin) => coin.symbol.toLowerCase().includes(term) || coin.name.toLowerCase().includes(term));
+      appState.marketData = filtered.length ? filtered : fallbackMarkets;
+      buildMarkets();
+    }
+    if (event.target.matches('#order-quantity')) {
+      appState.order.quantity = event.target.value;
+      appState.selectedSymbol = document.getElementById('order-symbol')?.value || appState.selectedSymbol;
+    }
+    if (event.target.matches('#order-symbol')) {
+      appState.selectedSymbol = event.target.value;
+    }
+  });
+
+  document.addEventListener('change', (event) => {
+    if (event.target.matches('#order-symbol')) {
+      appState.selectedSymbol = event.target.value;
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const sideButton = event.target.closest('[data-side]');
+    if (sideButton) {
+      document.querySelectorAll('[data-side]').forEach((button) => button.classList.toggle('active', button === sideButton));
+      appState.order.side = sideButton.dataset.side;
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const watchToggle = event.target.closest('[data-action="watch-toggle"]');
+    if (watchToggle) {
+      const symbol = watchToggle.dataset.symbol;
+      if (appState.account.watchlist.includes(symbol)) {
+        appState.account.watchlist = appState.account.watchlist.filter((entry) => entry !== symbol);
+      } else {
+        appState.account.watchlist = [...appState.account.watchlist, symbol];
+      }
+      renderView();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const periodButton = event.target.closest('[data-period]');
+    if (periodButton) {
+      document.querySelectorAll('[data-period]').forEach((button) => button.classList.toggle('active', button === periodButton));
+    }
+  });
+
+  const authForm = document.getElementById('auth-form');
+  if (authForm) {
+    authForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const email = document.getElementById('auth-email')?.value || 'guest@example.com';
+      appState.account.userId = email;
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-text');
+      if (toast && text) {
+        text.textContent = 'Signed in as practice user';
+        toast.classList.remove('hidden');
+        clearTimeout(window.toastTimer);
+        window.toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+      }
+      document.getElementById('auth-dialog')?.close();
+    });
+  }
+}
+
+function initialize() {
+  syncMarketData();
+  renderView();
+  bindEvents();
+
+  const today = document.getElementById('today');
+  if (today) today.textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const year = document.getElementById('year');
+  if (year) year.textContent = new Date().getFullYear();
+
+  const navButtons = document.querySelectorAll('.nav-link');
+  navButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      navButtons.forEach((item) => item.classList.toggle('active', item === button));
+    });
+  });
+}
+
+window.addEventListener('DOMContentLoaded', initialize);
